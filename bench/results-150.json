@@ -1,0 +1,20 @@
+{
+  "MkDocs Material": {
+    "cold_s": 1.93,
+    "incremental_s": 2.21,
+    "size_kb": 10392,
+    "files": 198
+  },
+  "Sphinx + MyST": {
+    "cold_s": 11.42,
+    "incremental_s": 2.32,
+    "size_kb": 7417,
+    "files": 482
+  },
+  "Pelican": {
+    "cold_s": 1.65,
+    "incremental_s": 1.59,
+    "size_kb": 3581,
+    "files": 174
+  }
+}

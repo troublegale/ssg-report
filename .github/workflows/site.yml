@@ -21,6 +21,14 @@ on:
         description: "id релиза для отката (пусто — предыдущий)"
         required: false
         default: ""
+      break_healthcheck:
+        description: "демонстрация: ожидать в HTML несуществующую строку (провал healthcheck → автооткат)"
+        type: boolean
+        default: false
+      bwlimit:
+        description: "демонстрация обрыва: ограничить скорость rsync, КБ/с (пусто — без ограничения)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -177,7 +185,8 @@ jobs:
           shared-dirs: ${{ steps.paths.outputs.shared }}
           keep-releases: "5"
           healthcheck-url: ${{ steps.paths.outputs.url }}
-          healthcheck-contains: ${{ github.sha }}
+          healthcheck-contains: ${{ inputs.break_healthcheck && 'NO-SUCH-BUILD-MARKER' || github.sha }}
+          rsync-args: ${{ inputs.bwlimit && format('--bwlimit={0}', inputs.bwlimit) || '' }}
           healthcheck-from: ${{ vars.HELIOS_HC_FROM || 'runner' }}
       - name: Smoke-тест ресурсов (поиск, MathJax без CDN)
         if: (vars.HELIOS_HC_FROM || 'runner') == 'runner'
