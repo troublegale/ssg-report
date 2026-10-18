@@ -13,8 +13,8 @@
 | composite или Docker-action, корректный `action.yml` | composite (`runs.using: composite`), один шаг `bash deploy.sh`; `inputs` (20), `outputs` (`release`, `previous-release`, `duration`), `description`, `branding` (`upload-cloud`, `blue`) |
 | параметры: хост, путь назначения, исходный каталог, ключ, `--delete` | `host` (по умолчанию `helios.cs.ifmo.ru`), `port` (`2222`), `target`, `source`, `ssh-key`, `delete` |
 | README с примером и совместимостью | [README](https://github.com/troublegale/helios-deploy-action#readme): примеры выкладки и отката, таблица параметров, совместимость (Linux/macOS-раннеры, FreeBSD/Linux-серверы), безопасность |
-| семантическое версионирование, подвижный мажорный тег | теги `v1.0.0` и `v1`; workflow `major-tag.yml` при публикации релиза `vX.Y.Z` переносит `vX` |
-| лицензия, публикация, реальный репозиторий-потребитель | MIT; Marketplace; используется этим сайтом, закреплён по SHA: `troublegale/helios-deploy-action@c68696c… # v1.0.0` |
+| семантическое версионирование, подвижный мажорный тег | теги `v1.0.0` и `v1` (для v1.0.0 поставлен вручную); со следующего релиза `vX.Y.Z` тег `vX` переносит workflow `major-tag.yml` — на v1.0.0 он не сработал, так как событие `release` берёт workflow из коммита тега, а там его ещё не было |
+| лицензия, публикация, реальный репозиторий-потребитель | MIT; [Marketplace](https://github.com/marketplace/actions/helios-itmo-static-deploy) (релиз 1.0.0, категория Deployment); используется этим сайтом, закреплён по SHA: `troublegale/helios-deploy-action@c68696c… # v1.0.0` |
 
 ## Возможности сверх обязательных
 
