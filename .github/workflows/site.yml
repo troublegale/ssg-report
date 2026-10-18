@@ -61,6 +61,8 @@ jobs:
         run: uv run codespell
       - name: Сборка в режиме --strict
         run: uv run mkdocs build --strict
+      - name: Нет ресурсов со сторонних CDN (шрифты, скрипты, стили)
+        run: uv run python scripts/check_no_external.py site
       - name: Проверка внутренних ссылок (linkchecker)
         run: |
           (cd site && python3 -m http.server 8000 >/dev/null 2>&1 &)
@@ -169,7 +171,7 @@ jobs:
           fi
       - name: Выкладка на Helios
         id: deploy
-        uses: troublegale/helios-deploy-action@main
+        uses: troublegale/helios-deploy-action@c68696cc44e98d39de8476a9281c1ff4bc538989 # v1.0.0
         with:
           username: ${{ env.HELIOS_USER }}
           ssh-key: ${{ secrets.HELIOS_SSH_KEY }}
@@ -198,7 +200,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: helios
     steps:
-      - uses: troublegale/helios-deploy-action@main
+      - uses: troublegale/helios-deploy-action@c68696cc44e98d39de8476a9281c1ff4bc538989 # v1.0.0
         with:
           username: ${{ env.HELIOS_USER }}
           ssh-key: ${{ secrets.HELIOS_SSH_KEY }}
@@ -221,7 +223,7 @@ jobs:
           - { target: .deploy/ssg-report/shared/preview/feature-preview-demo, releases: .deploy/ssg-report-previews/feature-preview-demo }
           - { target: .deploy/ssg-report/shared/preview/demo-interrupt, releases: .deploy/ssg-report-previews/demo-interrupt }
     steps:
-      - uses: troublegale/helios-deploy-action@main
+      - uses: troublegale/helios-deploy-action@c68696cc44e98d39de8476a9281c1ff4bc538989 # v1.0.0
         with:
           username: ${{ env.HELIOS_USER }}
           ssh-key: ${{ secrets.HELIOS_SSH_KEY }}
@@ -242,7 +244,7 @@ jobs:
         run: |
           slug=$(printf '%s' "$BRANCH" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-' '-' | sed 's/^-*//; s/-*$//' | cut -c1-40)
           echo "slug=$slug" >> "$GITHUB_OUTPUT"
-      - uses: troublegale/helios-deploy-action@main
+      - uses: troublegale/helios-deploy-action@c68696cc44e98d39de8476a9281c1ff4bc538989 # v1.0.0
         with:
           username: ${{ env.HELIOS_USER }}
           ssh-key: ${{ secrets.HELIOS_SSH_KEY }}

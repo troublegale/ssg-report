@@ -34,6 +34,8 @@ theme:
   name: material
   language: ru
   custom_dir: overrides
+  # Шрифты подключаются локально (docs/assets/stylesheets/fonts.css), а не с Google Fonts.
+  font: false
   icon:
     logo: material/book-open-page-variant
   palette:
@@ -57,13 +59,15 @@ theme:
     - search.highlight
     - search.suggest
     - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
 
 plugins:
   - search:
       lang: [ru, en]
-  # Внешние ресурсы (Google Fonts и т. п.) раздаются с самого сайта: страница не делает запросов к CDN.
-  # Кэш плагина хранится в репозитории (vendor-cache/), поэтому сборка не зависит от сети
-  # (см. «Отладка», ошибка с таймаутом fonts.gstatic.com в CI).
+  # Остальные внешние ресурсы (скрипты, которые тема и MathJax подгружают с unpkg/jsdelivr) скачиваются
+  # при сборке и раздаются с сайта. Кэш плагина хранится в репозитории (vendor-cache/), поэтому сборка
+  # не зависит от сети (см. «Отладка»).
   - privacy:
       cache_dir: vendor-cache/privacy
   - git-revision-date-localized:
@@ -84,13 +88,22 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+      # якоря из кириллических заголовков (по умолчанию не-ASCII символы выбрасываются)
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.details
+  - pymdownx.blocks.caption
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
   - pymdownx.inlinehilite
+  # Вставка файлов репозитория (workflow, скрипты) в страницы: текст в отчёте всегда совпадает с кодом.
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -105,12 +118,13 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 extra_css:
+  - assets/stylesheets/fonts.css
   - assets/stylesheets/extra.css
 
 extra_javascript:
+  # MathJax 3.2.2 (tex-svg) лежит в репозитории, а не грузится с CDN: формулы рендерятся без внешней сети.
+  # Скрипт конфигурации подгружает его только на страницах с формулами.
   - assets/javascripts/mathjax-config.js
-  # MathJax лежит в репозитории, а не грузится с CDN: формулы рендерятся без внешней сети.
-  - assets/vendor/mathjax/tex-svg.js
 
 extra:
   author:
