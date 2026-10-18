@@ -1,0 +1,228 @@
+# Сборка и публикация сайта.
+#   lint  → build (matrix: pages, helios) → deploy-pages  (только main)
+#                                         → deploy-helios (main → корень, прочие ветки → preview/<ветка>/)
+# Дополнительно: ручной откат релиза на Helios (workflow_dispatch) и удаление превью при удалении ветки.
+name: site
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore: ["README.md"]
+  pull_request:          # только lint + build: секретов у PR из форков нет, деплоя нет
+  delete:                # удалена ветка → удалить её превью на Helios
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "deploy — пересобрать и выложить; rollback — откатить Helios на предыдущий релиз"
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+      rollback_to:
+        description: "id релиза для отката (пусто — предыдущий)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+# Одна выкладка на ветку одновременно; новая сборка отменяет устаревшую.
+concurrency:
+  group: site-${{ github.event_name == 'delete' && 'delete' || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+env:
+  HELIOS_USER: s367293
+  HELIOS_BASE: https://se.ifmo.ru/~s367293/ssg-report/
+  UV_PYTHON: "3.12"
+  PYTHONUTF8: "1"
+
+jobs:
+  lint:
+    if: github.event_name != 'delete' && inputs.action != 'rollback'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0              # git-revision-date нужна полная история
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true          # кэш пакетов uv, ключ — хеш uv.lock
+      - name: Установка зависимостей (строго по uv.lock)
+        run: uv sync --locked
+      - name: Орфография (codespell)
+        run: uv run codespell
+      - name: Сборка в режиме --strict
+        run: uv run mkdocs build --strict
+      - name: Проверка внутренних ссылок (linkchecker)
+        run: |
+          (cd site && python3 -m http.server 8000 >/dev/null 2>&1 &)
+          sleep 1
+          uv run linkchecker --no-warnings http://127.0.0.1:8000/
+
+  build:
+    needs: lint
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        target: [pages, helios]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+      - name: Кэш внешних ресурсов privacy-плагина
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache
+          key: mkdocs-cache-${{ hashFiles('mkdocs.yml', 'uv.lock') }}
+      - run: uv sync --locked --no-dev
+      - name: Базовый URL для площадки
+        id: url
+        run: |
+          if [ "${{ matrix.target }}" = pages ]; then
+            echo "site_url=https://troublegale.github.io/ssg-report/" >> "$GITHUB_OUTPUT"
+          elif [ "$GITHUB_REF_NAME" = main ] || [ "${{ github.event_name }}" = pull_request ]; then
+            echo "site_url=$HELIOS_BASE" >> "$GITHUB_OUTPUT"
+          else
+            slug=$(printf '%s' "$GITHUB_REF_NAME" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-' '-' | sed 's/^-*//; s/-*$//' | cut -c1-40)
+            echo "site_url=${HELIOS_BASE}preview/$slug/" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Сборка
+        env:
+          SITE_URL: ${{ steps.url.outputs.site_url }}
+          DEPLOY_TARGET: ${{ matrix.target }}
+        run: |
+          start=$EPOCHREALTIME
+          uv run --no-dev mkdocs build --strict
+          end=$EPOCHREALTIME
+          size=$(du -sk site | cut -f1)
+          secs=$(awk -v a="$start" -v b="$end" 'BEGIN { printf "%.1f", b - a }')
+          printf '| %s | %s с | %s КБ |\n' "${{ matrix.target }}" "$secs" "$size" | tee -a build-stats.md
+          { echo "### Сборка (${{ matrix.target }})"; echo "| площадка | время mkdocs build | размер site/ |"; echo "|---|---|---|"; cat build-stats.md; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Артефакт для GitHub Pages
+        if: matrix.target == 'pages'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - name: Артефакт для Helios
+        if: matrix.target == 'helios'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site-helios
+          path: site
+          retention-days: 7
+
+  deploy-pages:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write        # публикация Pages
+      id-token: write     # OIDC-токен, которым deploy-pages подтверждает происхождение артефакта
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Healthcheck GitHub Pages
+        run: |
+          url="${{ steps.deploy.outputs.page_url }}"
+          for i in $(seq 1 12); do
+            code=$(curl -s -o page.html -w '%{http_code}' "$url?hc=$GITHUB_RUN_ID") || code=000
+            if [ "$code" = 200 ] && grep -qF "$GITHUB_SHA" page.html; then echo "OK: $url ($i)"; exit 0; fi
+            echo "попытка $i: HTTP $code"; sleep 10
+          done
+          echo "::error::GitHub Pages не отдаёт сборку $GITHUB_SHA"; exit 1
+
+  deploy-helios:
+    needs: build
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy')
+    runs-on: ubuntu-24.04
+    environment:
+      name: helios
+      url: ${{ steps.paths.outputs.url }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: site-helios
+          path: site
+      - name: Пути публикации
+        id: paths
+        run: |
+          if [ "$GITHUB_REF_NAME" = main ]; then
+            echo "target=public_html/ssg-report" >> "$GITHUB_OUTPUT"
+            echo "releases=.deploy/ssg-report" >> "$GITHUB_OUTPUT"
+            echo "shared=preview" >> "$GITHUB_OUTPUT"
+            echo "url=$HELIOS_BASE" >> "$GITHUB_OUTPUT"
+          else
+            slug=$(printf '%s' "$GITHUB_REF_NAME" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-' '-' | sed 's/^-*//; s/-*$//' | cut -c1-40)
+            echo "target=.deploy/ssg-report/shared/preview/$slug" >> "$GITHUB_OUTPUT"
+            echo "releases=.deploy/ssg-report-previews/$slug" >> "$GITHUB_OUTPUT"
+            echo "shared=" >> "$GITHUB_OUTPUT"
+            echo "url=${HELIOS_BASE}preview/$slug/" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Выкладка на Helios
+        id: deploy
+        uses: troublegale/helios-deploy-action@main
+        with:
+          username: ${{ env.HELIOS_USER }}
+          ssh-key: ${{ secrets.HELIOS_SSH_KEY }}
+          known-hosts: ${{ vars.HELIOS_KNOWN_HOSTS }}
+          source: site
+          target: ${{ steps.paths.outputs.target }}
+          releases-dir: ${{ steps.paths.outputs.releases }}
+          shared-dirs: ${{ steps.paths.outputs.shared }}
+          keep-releases: "5"
+          healthcheck-url: ${{ steps.paths.outputs.url }}
+          healthcheck-contains: ${{ github.sha }}
+          healthcheck-from: ${{ vars.HELIOS_HC_FROM || 'runner' }}
+      - name: Smoke-тест ресурсов (поиск, MathJax без CDN)
+        if: (vars.HELIOS_HC_FROM || 'runner') == 'runner'
+        run: |
+          base="${{ steps.paths.outputs.url }}"
+          for p in search/search_index.json assets/vendor/mathjax/tex-svg.js t1/ p4/; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$base$p")
+            echo "$code $base$p"; [ "$code" = 200 ] || exit 1
+          done
+          curl -s "${base}search/search_index.json" | grep -q '"lang":\["ru","en"\]' && echo "search: lang ru,en"
+
+  rollback-helios:
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'rollback' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: helios
+    steps:
+      - uses: troublegale/helios-deploy-action@main
+        with:
+          username: ${{ env.HELIOS_USER }}
+          ssh-key: ${{ secrets.HELIOS_SSH_KEY }}
+          known-hosts: ${{ vars.HELIOS_KNOWN_HOSTS }}
+          target: public_html/ssg-report
+          releases-dir: .deploy/ssg-report
+          mode: rollback
+          rollback-to: ${{ inputs.rollback_to }}
+          healthcheck-url: ${{ env.HELIOS_BASE }}
+          healthcheck-from: ${{ vars.HELIOS_HC_FROM || 'runner' }}
+
+  remove-preview:
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-24.04
+    environment: helios
+    steps:
+      - name: Путь превью
+        id: p
+        env:
+          BRANCH: ${{ github.event.ref }}
+        run: |
+          slug=$(printf '%s' "$BRANCH" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9-' '-' | sed 's/^-*//; s/-*$//' | cut -c1-40)
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+      - uses: troublegale/helios-deploy-action@main
+        with:
+          username: ${{ env.HELIOS_USER }}
+          ssh-key: ${{ secrets.HELIOS_SSH_KEY }}
+          known-hosts: ${{ vars.HELIOS_KNOWN_HOSTS }}
+          target: .deploy/ssg-report/shared/preview/${{ steps.p.outputs.slug }}
+          releases-dir: .deploy/ssg-report-previews/${{ steps.p.outputs.slug }}
+          mode: remove
