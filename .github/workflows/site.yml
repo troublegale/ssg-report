@@ -35,7 +35,7 @@ permissions:
 
 # Одна выкладка на ветку одновременно; новая сборка отменяет устаревшую.
 concurrency:
-  group: site-${{ github.event_name == 'delete' && 'delete' || github.ref }}
+  group: site-${{ github.event_name == 'delete' && format('delete-{0}', github.event.ref) || github.ref }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
