@@ -1,0 +1,129 @@
+site_name: "Задание 3: SSG и CI/CD"
+site_description: >-
+  Отчёт по заданию 3 курса PythEngin: сравнение генераторов статических сайтов (T1),
+  развёртывание на Helios ИТМО с контролем качества доставки (P4) и GitHub Action для Helios.
+site_author: Кожухин Иван Алексеевич
+# Канонический адрес. Для сборки под Helios переопределяется переменной SITE_URL
+# (см. .github/workflows/site.yml), т. к. там сайт живёт в подкаталоге /~s367293/ssg-report/.
+site_url: !ENV [SITE_URL, "https://troublegale.github.io/ssg-report/"]
+repo_url: https://github.com/troublegale/ssg-report
+repo_name: troublegale/ssg-report
+edit_uri: edit/main/docs/
+copyright: >-
+  Текст — <a href="https://creativecommons.org/licenses/by/4.0/deed.ru">CC BY 4.0</a>,
+  код — <a href="https://github.com/troublegale/ssg-report/blob/main/LICENSE">MIT</a>.
+  © 2026 Кожухин И. А.
+
+# Относительные ссылки «каталог/» вместо «файл.html»: одинаково работают в корне домена
+# (GitHub Pages) и в подкаталоге пользователя (Helios), если не писать абсолютных путей.
+use_directory_urls: true
+strict: true
+
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    absolute_links: warn
+    unrecognized_links: warn
+    anchors: warn
+
+theme:
+  name: material
+  language: ru
+  custom_dir: overrides
+  icon:
+    logo: material/book-open-page-variant
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/weather-night
+        name: Тёмная тема
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Светлая тема
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: [ru, en]
+  # Скачивает внешние ресурсы (Google Fonts и т. п.) на этапе сборки и раздаёт их с сайта:
+  # страница не делает запросов к сторонним CDN.
+  - privacy
+  - git-revision-date-localized:
+      type: date
+      locale: ru
+      fallback_to_build_date: true
+
+hooks:
+  - hooks/build_info.py
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+extra_javascript:
+  - assets/javascripts/mathjax-config.js
+  # MathJax лежит в репозитории, а не грузится с CDN: формулы рендерятся без внешней сети.
+  - assets/vendor/mathjax/tex-svg.js
+
+extra:
+  author:
+    name: Кожухин Иван Алексеевич
+    group: P4155
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/troublegale/ssg-report
+
+nav:
+  - Главная: index.md
+  - Ход работы: hod-raboty.md
+  - "T1. Сравнение SSG": t1.md
+  - "P4. Деплой на Helios": p4.md
+  - "Челлендж: Action для Helios": challenge.md
+  - Отладка: otladka.md
+  - Вывод: vyvod.md
+  - Лицензии: licenses.md

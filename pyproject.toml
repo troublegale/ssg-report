@@ -1,0 +1,27 @@
+[project]
+name = "ssg-report"
+version = "1.0.0"
+description = "Отчёт по заданию 3: генераторы статических сайтов (MkDocs Material), CI/CD, деплой на GitHub Pages и Helios ИТМО"
+authors = [{ name = "Кожухин Иван Алексеевич" }]
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mkdocs==1.6.1",
+    "mkdocs-material==9.7.7",
+    "pymdown-extensions==12.3",
+    "mkdocs-git-revision-date-localized-plugin==1.6.0",
+]
+
+[dependency-groups]
+dev = [
+    "codespell==2.4.3",
+    "linkchecker==10.6.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.codespell]
+skip = "./site,./.venv,./.cache,*.lock,./docs/assets/vendor"
+ignore-words-list = "ue"

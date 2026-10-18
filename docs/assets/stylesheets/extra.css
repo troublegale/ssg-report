@@ -1,0 +1,10 @@
+.build-info {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.65rem;
+  text-align: center;
+  color: var(--md-footer-fg-color--light);
+  background-color: var(--md-footer-bg-color--dark);
+}
+.md-typeset table:not([class]) {
+  font-size: 0.72rem;
+}

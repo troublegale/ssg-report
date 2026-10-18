@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  <meta name="ssg-build-commit" content="{{ config.extra.build.commit }}">
+  <meta name="ssg-build-target" content="{{ config.extra.build.target }}">
+{% endblock %}
+
+{% block footer %}
+  {{ super() }}
+  <div class="build-info md-typeset">
+    Сборка <code>{{ config.extra.build.commit_short }}</code>
+    · ветка <code>{{ config.extra.build.branch }}</code>
+    · {{ config.extra.build.date }}
+    · площадка <code>{{ config.extra.build.target }}</code>
+  </div>
+{% endblock %}
