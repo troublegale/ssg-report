@@ -13,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "deploy — пересобрать и выложить; rollback — откатить Helios на предыдущий релиз"
+        description: "deploy — пересобрать и выложить; rollback — откатить Helios на предыдущий релиз; status — состояние релизов"
         type: choice
-        options: [deploy, rollback]
+        options: [deploy, rollback, status]
         default: deploy
       rollback_to:
         description: "id релиза для отката (пусто — предыдущий)"
@@ -46,7 +46,7 @@ env:
 
 jobs:
   lint:
-    if: github.event_name != 'delete' && inputs.action != 'rollback'
+    if: github.event_name != 'delete' && inputs.action != 'rollback' && inputs.action != 'status'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -214,6 +214,26 @@ jobs:
           rollback-to: ${{ inputs.rollback_to }}
           healthcheck-url: ${{ env.HELIOS_BASE }}
           healthcheck-from: ${{ vars.HELIOS_HC_FROM || 'runner' }}
+
+  status-helios:
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'status'
+    runs-on: ubuntu-24.04
+    environment: helios
+    strategy:
+      matrix:
+        site:
+          - { target: public_html/ssg-report, releases: .deploy/ssg-report }
+          - { target: .deploy/ssg-report/shared/preview/feature-preview-demo, releases: .deploy/ssg-report-previews/feature-preview-demo }
+          - { target: .deploy/ssg-report/shared/preview/demo-interrupt, releases: .deploy/ssg-report-previews/demo-interrupt }
+    steps:
+      - uses: troublegale/helios-deploy-action@main
+        with:
+          username: ${{ env.HELIOS_USER }}
+          ssh-key: ${{ secrets.HELIOS_SSH_KEY }}
+          known-hosts: ${{ vars.HELIOS_KNOWN_HOSTS }}
+          target: ${{ matrix.site.target }}
+          releases-dir: ${{ matrix.site.releases }}
+          mode: status
 
   remove-preview:
     if: github.event_name == 'delete' && github.event.ref_type == 'branch'
