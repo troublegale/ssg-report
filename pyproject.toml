@@ -23,5 +23,5 @@ dev = [
 package = false
 
 [tool.codespell]
-skip = "./site,./.venv,./.cache,*.lock,./docs/assets/vendor,./bench/work,./bench/.venv"
+skip = "./vendor-cache,./site,./.venv,./.cache,*.lock,./docs/assets/vendor,./bench/work,./bench/.venv"
 ignore-words-list = "ue"

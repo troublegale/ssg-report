@@ -61,9 +61,11 @@ theme:
 plugins:
   - search:
       lang: [ru, en]
-  # Скачивает внешние ресурсы (Google Fonts и т. п.) на этапе сборки и раздаёт их с сайта:
-  # страница не делает запросов к сторонним CDN.
-  - privacy
+  # Внешние ресурсы (Google Fonts и т. п.) раздаются с самого сайта: страница не делает запросов к CDN.
+  # Кэш плагина хранится в репозитории (vendor-cache/), поэтому сборка не зависит от сети
+  # (см. «Отладка», ошибка с таймаутом fonts.gstatic.com в CI).
+  - privacy:
+      cache_dir: vendor-cache/privacy
   - git-revision-date-localized:
       type: date
       locale: ru
